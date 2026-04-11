@@ -1,0 +1,4 @@
+  uptime-monitor
+  uptime.db
+  ec2 describe-instances*
+  *.pem
