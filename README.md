@@ -1,8 +1,6 @@
 # Personal Uptime Monitor
 
-## Overview
-
-This document covers everything involved in building and deploying a personal uptime monitor from scratch. The app pings a list of URLs on a schedule, stores the results in a database, exposes them via a REST API, and displays them on a live dashboard — with full observability through Prometheus and Grafana, containerized with Docker, and deployed to AWS.
+This was my first time making a web application. And it wasn't easy. But I realized that most things that need to be secured on the cloud are web application infrastructure. I did some research and found that Golang is a desirable language in cloud computing because of its lightweightness and efficiency. It's also a pretty easy programming language to understand. So I decided to build an app that would continuously ping URLs on a schedule, stores the results in a database, exposes them via a REST API, and displays them on a live dashboard — with full observability through Prometheus and Grafana, containerized with Docker, and deployed to AWS.
 
 **Stack:**
 - Go (Golang) — backend language
