@@ -1,0 +1,41 @@
+services:
+  app:
+    image: devonbooker/uptime-monitor:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - sqlite-data:/app/data
+    environment:
+      - DB_PATH=/app/data/uptime.db
+    restart: unless-stopped
+    networks:
+      - monitor-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    networks:
+      - monitor-net
+
+volumes:
+  sqlite-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  monitor-net:
