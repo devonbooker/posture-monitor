@@ -1,7 +1,4 @@
 # Personal Uptime Monitor
-### A first-timer's guide to web apps, databases, observability, and cloud deployment
-
----
 
 ## Overview
 
