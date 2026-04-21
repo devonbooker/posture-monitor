@@ -1,4 +1,28 @@
-  uptime-monitor
-  uptime.db
-  ec2 describe-instances*
-  *.pem
+# Compiled Go binary
+/uptime-monitor
+/uptime-monitor.exe
+
+# SQLite database files (runtime data, not source)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Local env files - NEVER commit these
+.env
+.env.local
+
+# IDE / OS clutter
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker volume mounts if any appear locally
+/data/
+
+# Stray shell redirection output
+ec2 describe-instances*
+
+# Local Claude Code project instructions - keep out of public repo
+CLAUDE.md

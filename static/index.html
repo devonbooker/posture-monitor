@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Uptime Monitor</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+    }
+    h1 { color: #ffffff; }
+    p  { color: #888; font-size: 0.9em; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      color: #888;
+      font-weight: normal;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    tr:hover td { background: #1a1a1a; }
+
+    .up   { color: #4caf50; font-weight: bold; }
+    .down { color: #f44336; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Uptime Monitor</h1>
+  <p id="updated">Loading...</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>URL</th>
+        <th>Status</th>
+        <th>HTTP Code</th>
+        <th>Latency</th>
+        <th>Checked At</th>
+      </tr>
+    </thead>
+    <tbody id="results"></tbody>
+  </table>
+
+  <script>
+    async function loadResults() {
+      const resp = await fetch('/api/results');
+      const data = await resp.json();
+
+      const tbody = document.getElementById('results');
+      tbody.innerHTML = '';
+
+      for (const row of data) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.URL}</td>
+          <td class="${row.Up ? 'up' : 'down'}">${row.Up ? 'UP' : 'DOWN'}</td>
+          <td>${row.StatusCode || '—'}</td>
+          <td>${row.LatencyMs}ms</td>
+          <td>${new Date(row.CheckedAt).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById('updated').textContent =
+        `Last updated: ${new Date().toLocaleTimeString()} — refreshes every 30s`;
+    }
+
+    loadResults();
+    setInterval(loadResults, 30000);
+  </script>
+</body>
+</html>

@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func startServer(db *sql.DB) {
-	http.Handle("/", http.FileServer(http.Dir("static")))
-	http.Handle("/metrics", promhttp.Handler())
+func newServer(db *sql.DB) *http.Server {
+	mux := http.NewServeMux()
 
-	http.HandleFunc("/api/results", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/", http.FileServer(http.Dir("static")))
+	mux.Handle("/metrics", promhttp.Handler())
+
+	mux.HandleFunc("/api/results", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := db.Query(`
 			SELECT url, up, status_code, latency_ms, checked_at
 			FROM ping_results
@@ -29,19 +32,23 @@ func startServer(db *sql.DB) {
 
 		results := []PingResult{}
 		for rows.Next() {
-			var r PingResult
-			err := rows.Scan(&r.URL, &r.Up, &r.StatusCode, &r.LatencyMs, &r.CheckedAt)
-			if err != nil {
+			var pr PingResult
+			if err := rows.Scan(&pr.URL, &pr.Up, &pr.StatusCode, &pr.LatencyMs, &pr.CheckedAt); err != nil {
 				log.Println("scan error:", err)
 				continue
 			}
-			results = append(results, r)
+			results = append(results, pr)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(results)
 	})
 
-	log.Println("API server listening on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	return &http.Server{
+		Addr:         ":8080",
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 }
