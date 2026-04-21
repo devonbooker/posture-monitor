@@ -57,6 +57,14 @@ Why this matters: the #1 cause of public-facing outages isn't the application fa
 |---|---|---|
 | `DB_PATH` | `uptime.db` | SQLite file location. Override to a mounted volume in Docker. |
 | `PING_INTERVAL` | `30s` | Go duration string (`10s`, `1m`, `5m`). Invalid values fall back to default with a warning. |
+| `GRAFANA_ADMIN_PASSWORD` | (required) | Grafana admin password. Read from `.env` by `docker compose`. Compose will refuse to start if unset. |
+
+Create a `.env` from the template before bringing the stack up:
+
+```bash
+cp .env.example .env
+# edit .env and set a real password (openssl rand -base64 32)
+```
 
 ---
 
@@ -83,38 +91,36 @@ docker compose up
 
 ## Deploy to Hetzner
 
-**1. Build and push a multi-arch image from your laptop:**
+Automated via GitHub Actions (`.github/workflows/deploy.yml`): every push to `main` builds a multi-arch image, pushes `:latest` and `:<short-sha>` tags to GHCR, SSHes to the VM, pulls, restarts, and health-checks the dashboard. Rollback is `docker compose` with the image tag pinned to a previous SHA.
 
-```bash
-docker buildx create --use --name multiarch || docker buildx use multiarch
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/devonbooker/posture-monitor:latest \
-  --push .
-```
-
-**2. Copy the compose files to the VM:**
-
-```bash
-scp docker-compose.yml prometheus.yml devon@<vm-ip>:~/posture-monitor/
-```
-
-**3. On the VM, log in to GHCR and start the stack:**
+### One-time VM setup
 
 ```bash
 ssh devon@<vm-ip>
-cd posture-monitor
+
+# Log in to GHCR once - creds cache in ~/.docker/config.json
 echo $GHCR_PAT | docker login ghcr.io -u devonbooker --password-stdin
-docker compose pull
-docker compose up -d
-```
 
-**4. Open ports in UFW for the dashboard and Grafana:**
+# Place compose files + .env on the VM
+mkdir -p ~/posture-monitor && cd ~/posture-monitor
+# scp docker-compose.yml prometheus.yml .env.example from your laptop into this dir
+cp .env.example .env
+# edit .env and set GRAFANA_ADMIN_PASSWORD to a real value
 
-```bash
+# Open ports for the dashboard and Grafana
 sudo ufw allow 8080/tcp
 sudo ufw allow 3000/tcp
 ```
+
+### One-time GitHub Actions setup
+
+In Settings → Secrets and variables → Actions, add three repo secrets:
+
+| Secret | Value |
+|---|---|
+| `HETZNER_HOST` | VM public IP |
+| `HETZNER_USER` | SSH user (e.g. `devon`) |
+| `HETZNER_SSH_KEY` | Private key (full file contents, including `-----BEGIN`/`-----END`). Generate with `ssh-keygen -t ed25519 -f ~/.ssh/gh_actions_hetzner` and install the `.pub` on the VM via `ssh-copy-id`. |
 
 Prometheus intentionally has no host port - Grafana reaches it over the internal Docker network.
 
@@ -145,7 +151,6 @@ security_header_present{header="csp"} == 0
 
 ## Roadmap
 
-- GitHub Actions workflow to auto-build and push multi-arch on every push to main
 - Grafana dashboards provisioned as code (currently configured by hand)
 - Migrate SQLite to Postgres once retention exceeds what a single-writer file can handle
 - Add TLS cipher suite and protocol version inspection (flag TLS 1.0/1.1, RC4, 3DES)
