@@ -18,12 +18,21 @@ LABEL org.opencontainers.image.source="https://github.com/devonbooker/posture-mo
 LABEL org.opencontainers.image.description="Self-hosted endpoint security posture monitor - uptime, TLS expiry, security headers"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# ca-certificates lets the binary verify TLS certs when pinging HTTPS URLs
-RUN apk add --no-cache ca-certificates
+# ca-certificates lets the binary verify TLS certs when pinging HTTPS URLs.
+# nonroot user + group at fixed uid/gid 65532 lines up with the distroless
+# convention and lets compose enforce a non-root container.
+RUN apk add --no-cache ca-certificates && \
+    addgroup -g 65532 -S nonroot && \
+    adduser -u 65532 -S nonroot -G nonroot
 
 WORKDIR /app
 COPY --from=builder /app/posture-monitor .
 COPY static/ static/
 
+# /app/data is the SQLite volume mount point - create it in the image so its
+# ownership is set before docker mounts the volume on top.
+RUN mkdir -p /app/data && chown -R 65532:65532 /app
+
+USER 65532:65532
 EXPOSE 8080
 CMD ["./posture-monitor"]
