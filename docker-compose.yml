@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/devonbooker/personal-uptime-monitor:latest
+    image: ghcr.io/devonbooker/posture-monitor:latest
     ports:
       - "8080:8080"
     volumes:

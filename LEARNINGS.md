@@ -1,11 +1,13 @@
-# Building a Production Uptime Monitor in Go
+# Building a Production Security Posture Monitor in Go
 ### A first-timer's guide to web apps, databases, observability, and cloud deployment
+
+> Historical note: this project started as `uptime-monitor`. You'll see that name throughout Chapters 1-9 because that's literally what the commands were at the time. It was renamed to `posture-monitor` once the scope grew beyond uptime into TLS expiry and security-header posture checks. The current configs (`go.mod`, Dockerfile, docker-compose.yml, prometheus.yml) reflect the new name.
 
 ---
 
 ## Overview
 
-This document covers everything involved in building and deploying a personal uptime monitor from scratch. The app pings a list of URLs on a schedule, stores the results in a database, exposes them via a REST API, and displays them on a live dashboard — with full observability through Prometheus and Grafana, containerized with Docker, and deployed to AWS.
+This document covers everything involved in building and deploying a personal security posture monitor from scratch. The app pings a list of URLs on a schedule, stores the results in a database, exposes them via a REST API, and displays them on a live dashboard — with full observability through Prometheus and Grafana, containerized with Docker, and deployed to AWS. On top of uptime, it tracks TLS certificate expiry and the presence of defense-in-depth response headers (HSTS, CSP, X-Frame-Options, etc.) - the two places where "is the site up" quietly becomes "is the site safe."
 
 **Stack:**
 - Go (Golang) — backend language

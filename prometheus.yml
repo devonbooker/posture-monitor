@@ -2,6 +2,6 @@ global:
   scrape_interval: 30s  # how often Prometheus pulls metrics
 
 scrape_configs:
-  - job_name: uptime-monitor
+  - job_name: posture-monitor
     static_configs:
       - targets: ["app:8080"]  # "app" is the service name in docker-compose

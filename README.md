@@ -89,21 +89,21 @@ docker compose up
 docker buildx create --use --name multiarch || docker buildx use multiarch
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/devonbooker/personal-uptime-monitor:latest \
+  -t ghcr.io/devonbooker/posture-monitor:latest \
   --push .
 ```
 
 **2. Copy the compose files to the VM:**
 
 ```bash
-scp docker-compose.yml prometheus.yml devon@<vm-ip>:~/uptime-monitor/
+scp docker-compose.yml prometheus.yml devon@<vm-ip>:~/posture-monitor/
 ```
 
 **3. On the VM, log in to GHCR and start the stack:**
 
 ```bash
 ssh devon@<vm-ip>
-cd uptime-monitor
+cd posture-monitor
 echo $GHCR_PAT | docker login ghcr.io -u devonbooker --password-stdin
 docker compose pull
 docker compose up -d

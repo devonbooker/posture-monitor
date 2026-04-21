@@ -108,7 +108,7 @@ func main() {
 	}()
 
 	interval := pingInterval()
-	fmt.Printf("uptime monitor started - interval=%s, targets=%d\n", interval, len(urls))
+	fmt.Printf("posture monitor started - interval=%s, targets=%d\n", interval, len(urls))
 
 	var wg sync.WaitGroup
 	pingAll(ctx, &wg, db, urls)

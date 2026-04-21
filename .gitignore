@@ -1,4 +1,7 @@
 # Compiled Go binary
+/posture-monitor
+/posture-monitor.exe
+# Legacy binary name from earlier uptime-monitor rename
 /uptime-monitor
 /uptime-monitor.exe
 

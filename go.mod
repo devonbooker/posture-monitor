@@ -1,4 +1,4 @@
-module uptime-monitor
+module posture-monitor
 
 go 1.25.0
 
