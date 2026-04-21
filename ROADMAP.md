@@ -16,7 +16,7 @@ Phased plan, prioritized for **Security Infrastructure / DevSecOps / Cloud Secur
 
 ---
 
-## Phase 2 - Container + CI security hardening
+## Phase 2 - Container + CI security hardening ✅ SHIPPED 2026-04-21
 
 **What:**
 - **Dockerfile:** run as non-root (`USER 65532:65532`), drop all capabilities, `read_only: true` rootfs with a `tmpfs` for `/tmp` if needed, add `security_opt: [no-new-privileges:true]` in compose
