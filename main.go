@@ -99,6 +99,7 @@ func main() {
 		"https://www.nextplayjobs.com",
 		"https://www.welcometothejungle.com/en/jobs",
 		"https://wellfound.com",
+		"https://posture.devonbooker.dev",
 	}
 
 	srv := newServer(db)
