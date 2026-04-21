@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var securityHeaders = map[string]string{
@@ -44,4 +47,40 @@ func recordSecurityHeaders(url string, resp *http.Response) {
 		}
 		securityHeaderPresent.WithLabelValues(url, label).Set(val)
 	}
+}
+
+// recordTLSCipher publishes the negotiated TLS protocol version and cipher
+// suite for each URL, and raises weak-configuration flags. Protocols below
+// TLS 1.2 and ciphers on Go's tls.InsecureCipherSuites() list (RC4, 3DES,
+// CBC-SHA1, export) are the things that show up in compliance audits and
+// break modern CSP / cookie-security assumptions.
+func recordTLSCipher(url string, resp *http.Response) {
+	if resp.TLS == nil {
+		return
+	}
+
+	protocol := tls.VersionName(resp.TLS.Version)
+	cipher := tls.CipherSuiteName(resp.TLS.CipherSuite)
+
+	// Clear any prior (url, oldProtocol, oldCipher) series so renegotiation
+	// doesn't leave a stale 1-valued gauge hanging around for this URL.
+	tlsInfo.DeletePartialMatch(prometheus.Labels{"url": url})
+	tlsInfo.WithLabelValues(url, protocol, cipher).Set(1)
+
+	weakProto := 0.0
+	if resp.TLS.Version < tls.VersionTLS12 {
+		weakProto = 1.0
+		fmt.Printf("WARN  %s - weak TLS protocol: %s\n", url, protocol)
+	}
+	tlsWeakProtocol.WithLabelValues(url).Set(weakProto)
+
+	weakCipher := 0.0
+	for _, c := range tls.InsecureCipherSuites() {
+		if c.ID == resp.TLS.CipherSuite {
+			weakCipher = 1.0
+			fmt.Printf("WARN  %s - insecure TLS cipher: %s\n", url, cipher)
+			break
+		}
+	}
+	tlsWeakCipher.WithLabelValues(url).Set(weakCipher)
 }

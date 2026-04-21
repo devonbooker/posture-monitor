@@ -12,6 +12,7 @@ For each target URL, every 30 seconds:
 
 - **Availability** - HTTP status, latency, up/down result, persisted to SQLite
 - **TLS certificate health** - parses the leaf cert off the live response, emits `tls_cert_days_until_expiry` as a Prometheus gauge, logs a warning at 30 days
+- **TLS protocol and cipher posture** - reads the negotiated protocol version and cipher off `resp.TLS`, emits `tls_info{protocol, cipher}`, and raises `tls_weak_protocol` / `tls_weak_cipher` flags when a target negotiates TLS 1.0/1.1 or a cipher on Go stdlib's `tls.InsecureCipherSuites()` list (RC4, 3DES, CBC-SHA1, export)
 - **Security header posture** - checks for HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy and emits `security_header_present{url, header}` so you can alert on regressions
 
 Why this matters: the #1 cause of public-facing outages isn't the application failing, it's the TLS cert expiring. The #1 cause of "how did they get stored XSS past us" is a missing or weak CSP. This tool puts both on the same dashboard as uptime.
@@ -133,12 +134,27 @@ Prometheus intentionally has no host port - Grafana reaches it over the internal
 | `uptime_pings_total` | Counter | `url`, `status` | How many checks per URL, split by up/down |
 | `uptime_latency_ms` | Gauge | `url` | Most recent response time |
 | `tls_cert_days_until_expiry` | Gauge | `url` | Days remaining on the leaf cert. Alert on `< 30`. |
+| `tls_info` | Gauge | `url`, `protocol`, `cipher` | Always 1. Label values carry the negotiated TLS version (e.g. `TLS 1.3`) and cipher suite (e.g. `TLS_AES_128_GCM_SHA256`). |
+| `tls_weak_protocol` | Gauge | `url` | 1 if URL negotiated a protocol weaker than TLS 1.2, else 0. |
+| `tls_weak_cipher` | Gauge | `url` | 1 if URL negotiated a cipher on Go stdlib's insecure list, else 0. |
 | `security_header_present` | Gauge | `url`, `header` | 1 if header set, 0 if missing. Alert on regression. |
 
 Example PromQL for a "certs expiring soon" alert:
 
 ```promql
 tls_cert_days_until_expiry < 30
+```
+
+Example for "weak TLS protocol" alert (TLS 1.0 or 1.1 negotiated):
+
+```promql
+tls_weak_protocol == 1
+```
+
+Example for "insecure cipher suite" alert (RC4, 3DES, CBC-SHA1, export):
+
+```promql
+tls_weak_cipher == 1
 ```
 
 Example for "CSP regression" alert:
@@ -153,6 +169,5 @@ security_header_present{header="csp"} == 0
 
 - Grafana dashboards provisioned as code (currently configured by hand)
 - Migrate SQLite to Postgres once retention exceeds what a single-writer file can handle
-- Add TLS cipher suite and protocol version inspection (flag TLS 1.0/1.1, RC4, 3DES)
 - Add HTTP method probing (verify `PUT`/`DELETE` return 405 on read-only endpoints)
 - Grafana alert rules that page on cert expiry and security header regressions

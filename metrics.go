@@ -34,6 +34,30 @@ var (
 		},
 		[]string{"url", "header"},
 	)
+
+	tlsInfo = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_info",
+			Help: "Negotiated TLS protocol and cipher per URL. Value is always 1 - label values carry the signal.",
+		},
+		[]string{"url", "protocol", "cipher"},
+	)
+
+	tlsWeakProtocol = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_weak_protocol",
+			Help: "1 if the URL negotiated a protocol weaker than TLS 1.2, else 0",
+		},
+		[]string{"url"},
+	)
+
+	tlsWeakCipher = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_weak_cipher",
+			Help: "1 if the URL negotiated a cipher on Go stdlib's tls.InsecureCipherSuites() list, else 0",
+		},
+		[]string{"url"},
+	)
 )
 
 func init() {
@@ -41,4 +65,7 @@ func init() {
 	prometheus.MustRegister(pingLatency)
 	prometheus.MustRegister(tlsCertDaysUntilExpiry)
 	prometheus.MustRegister(securityHeaderPresent)
+	prometheus.MustRegister(tlsInfo)
+	prometheus.MustRegister(tlsWeakProtocol)
+	prometheus.MustRegister(tlsWeakCipher)
 }

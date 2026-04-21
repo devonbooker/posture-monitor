@@ -39,6 +39,7 @@ func ping(ctx context.Context, db *sql.DB, url string) {
 	defer resp.Body.Close()
 
 	recordTLSExpiry(url, resp)
+	recordTLSCipher(url, resp)
 	recordSecurityHeaders(url, resp)
 
 	up := resp.StatusCode >= 200 && resp.StatusCode < 400
