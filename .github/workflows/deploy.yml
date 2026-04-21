@@ -51,6 +51,18 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync config files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: "docker-compose.yml,prometheus.yml,Caddyfile"
+          target: "~/posture-monitor/"
+          overwrite: true
+
       - name: Deploy to Hetzner
         uses: appleboy/ssh-action@v1.2.0
         with:
