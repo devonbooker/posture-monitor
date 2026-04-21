@@ -67,13 +67,15 @@ jobs:
       - name: Health check dashboard
         run: |
           set -e
-          for i in $(seq 1 12); do
-            if curl -fsS --max-time 5 "http://${{ secrets.HETZNER_HOST }}:8080/api/results" > /dev/null; then
+          # Longer window than a plain API check: Caddy's first Let's Encrypt
+          # cert issuance on a fresh volume can take 30-60s before HTTPS serves.
+          for i in $(seq 1 24); do
+            if curl -fsS --max-time 5 "https://posture.devonbooker.dev/api/results" > /dev/null; then
               echo "Dashboard healthy on attempt $i"
               exit 0
             fi
             echo "Attempt $i: not healthy yet, sleeping 5s"
             sleep 5
           done
-          echo "Health check failed after 60s - rollback manually with: docker compose down && edit image tag to previous SHA && docker compose up -d"
+          echo "Health check failed after 120s - rollback by pinning the previous :<sha> tag in docker-compose.yml on the VM"
           exit 1

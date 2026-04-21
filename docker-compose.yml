@@ -1,8 +1,19 @@
 services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    networks:
+      - monitor-net
+
   app:
     image: ghcr.io/devonbooker/posture-monitor:latest
-    ports:
-      - "8080:8080"
     volumes:
       - sqlite-data:/app/data
     environment:
@@ -22,12 +33,14 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set (see .env.example)}
+      - GF_SERVER_ROOT_URL=https://grafana.devonbooker.dev
+      - GF_SERVER_DOMAIN=grafana.devonbooker.dev
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=lax
     restart: unless-stopped
     networks:
       - monitor-net
@@ -36,6 +49,8 @@ volumes:
   sqlite-data:
   prometheus-data:
   grafana-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   monitor-net:

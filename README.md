@@ -81,18 +81,32 @@ Or the full stack:
 docker compose up
 ```
 
-| Endpoint | What |
+| Endpoint (local dev) | What |
 |---|---|
-| `http://localhost:8080` | Dashboard |
+| `http://localhost:8080` | Dashboard (only exposed when running `go run .` - the compose stack is Caddy-only on the host) |
 | `http://localhost:8080/api/results` | Last 100 checks as JSON |
 | `http://localhost:8080/metrics` | Prometheus scrape target |
-| `http://localhost:3000` | Grafana (admin / admin on first login) |
+
+In production (see Deploy section) the app and Grafana are only reachable via Caddy at `https://posture.devonbooker.dev` and `https://grafana.devonbooker.dev` - ports 8080 and 3000 are not published to the host.
 
 ---
 
 ## Deploy to Hetzner
 
-Automated via GitHub Actions (`.github/workflows/deploy.yml`): every push to `main` builds a multi-arch image, pushes `:latest` and `:<short-sha>` tags to GHCR, SSHes to the VM, pulls, restarts, and health-checks the dashboard. Rollback is `docker compose` with the image tag pinned to a previous SHA.
+Automated via GitHub Actions (`.github/workflows/deploy.yml`): every push to `main` builds a multi-arch image, pushes `:latest` and `:<short-sha>` tags to GHCR, SSHes to the VM, pulls, restarts, and health-checks `https://posture.devonbooker.dev/api/results`. Rollback is `docker compose` with the image tag pinned to a previous SHA.
+
+Caddy sits on ports 80/443 and terminates TLS for both `posture.devonbooker.dev` (app) and `grafana.devonbooker.dev` (Grafana). Let's Encrypt certs are issued and auto-renewed by Caddy, persisted in the `caddy-data` Docker volume. The app and Grafana containers are not exposed to the host - Caddy reaches them via the internal Docker network.
+
+### One-time DNS setup (Cloudflare)
+
+Create two `A` records on `devonbooker.dev`, both with **Proxy status: DNS only** (gray cloud, not orange) so traffic terminates on your origin cert and your own TLS config is what's being served:
+
+| Name | Value |
+|---|---|
+| `posture` | `<vm-ip>` |
+| `grafana` | `<vm-ip>` |
+
+Why DNS-only: Cloudflare's proxied mode presents Cloudflare's edge cert to users. This project's whole purpose is demonstrating your own TLS posture, so traffic must hit your origin directly.
 
 ### One-time VM setup
 
@@ -102,15 +116,18 @@ ssh devon@<vm-ip>
 # Log in to GHCR once - creds cache in ~/.docker/config.json
 echo $GHCR_PAT | docker login ghcr.io -u devonbooker --password-stdin
 
-# Place compose files + .env on the VM
+# Place compose files + Caddyfile + .env on the VM
 mkdir -p ~/posture-monitor && cd ~/posture-monitor
-# scp docker-compose.yml prometheus.yml .env.example from your laptop into this dir
+# scp docker-compose.yml prometheus.yml Caddyfile .env.example from your laptop into this dir
 cp .env.example .env
 # edit .env and set GRAFANA_ADMIN_PASSWORD to a real value
 
-# Open ports for the dashboard and Grafana
-sudo ufw allow 8080/tcp
-sudo ufw allow 3000/tcp
+# UFW: allow Caddy, deny everything else app-related
+sudo ufw allow 80/tcp    # Let's Encrypt HTTP-01 challenge + HTTPS redirect
+sudo ufw allow 443/tcp   # Caddy-terminated HTTPS
+# If 8080/3000 were previously allowed, close them now:
+sudo ufw delete allow 8080/tcp 2>/dev/null || true
+sudo ufw delete allow 3000/tcp 2>/dev/null || true
 ```
 
 ### One-time GitHub Actions setup
@@ -123,7 +140,7 @@ In Settings → Secrets and variables → Actions, add three repo secrets:
 | `HETZNER_USER` | SSH user (e.g. `devon`) |
 | `HETZNER_SSH_KEY` | Private key (full file contents, including `-----BEGIN`/`-----END`). Generate with `ssh-keygen -t ed25519 -f ~/.ssh/gh_actions_hetzner` and install the `.pub` on the VM via `ssh-copy-id`. |
 
-Prometheus intentionally has no host port - Grafana reaches it over the internal Docker network.
+Prometheus intentionally has no host port - Grafana reaches it over the internal Docker network, same as it reaches the app.
 
 ---
 
