@@ -4,7 +4,7 @@ Phased plan, prioritized for **Security Infrastructure / DevSecOps / Cloud Secur
 
 ---
 
-## Phase 1 - Grafana as code + alert rules
+## Phase 1 - Grafana as code + alert rules ✅ SHIPPED 2026-04-21
 
 **What:** Provision dashboards and alert rules via JSON + Grafana's sidecar provisioning. One dashboard (Uptime & TLS Posture) with panels for uptime % per URL, latency p50/p99, cert days-until-expiry (color threshold at 30 days), TLS protocol + cipher table, security-header matrix. Alert rules: cert < 30d, `tls_weak_protocol == 1`, `tls_weak_cipher == 1`, header regressions.
 
