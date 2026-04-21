@@ -184,7 +184,4 @@ security_header_present{header="csp"} == 0
 
 ## Roadmap
 
-- Grafana dashboards provisioned as code (currently configured by hand)
-- Migrate SQLite to Postgres once retention exceeds what a single-writer file can handle
-- Add HTTP method probing (verify `PUT`/`DELETE` return 405 on read-only endpoints)
-- Grafana alert rules that page on cert expiry and security header regressions
+See [ROADMAP.md](./ROADMAP.md) for the phased plan (Grafana-as-code → container/CI hardening → Terraform → auto-rollback).
