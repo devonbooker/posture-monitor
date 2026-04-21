@@ -1,0 +1,243 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: posture-alerts
+    folder: Posture
+    interval: 1m
+    rules:
+      - uid: posture-cert-expiring
+        title: TLS cert expiring within 30 days
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: posture-prom
+            model:
+              editorMode: code
+              expr: tls_cert_days_until_expiry
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    params: [30]
+                    type: lt
+                  operator:
+                    type: and
+                  reducer:
+                    type: last
+                    params: []
+                  query:
+                    params: [B]
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 'TLS cert for {{ $labels.url }} expires in {{ $values.B }} days'
+          description: 'Renew or rotate the cert; alert triggers under 30 days.'
+        labels:
+          severity: warning
+          category: tls
+
+      - uid: posture-weak-protocol
+        title: Weak TLS protocol negotiated
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: posture-prom
+            model:
+              editorMode: code
+              expr: tls_weak_protocol
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  reducer:
+                    type: last
+                    params: []
+                  query:
+                    params: [B]
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: '{{ $labels.url }} negotiated a TLS protocol weaker than 1.2'
+          description: 'Investigate endpoint TLS configuration; downgrade is a security regression.'
+        labels:
+          severity: critical
+          category: tls
+
+      - uid: posture-weak-cipher
+        title: Weak TLS cipher negotiated
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: posture-prom
+            model:
+              editorMode: code
+              expr: tls_weak_cipher
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  reducer:
+                    type: last
+                    params: []
+                  query:
+                    params: [B]
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: '{{ $labels.url }} negotiated a cipher on Go stdlib InsecureCipherSuites'
+          description: 'Endpoint accepted a known-weak cipher; server or intermediate proxy needs hardening.'
+        labels:
+          severity: critical
+          category: tls
+
+      - uid: posture-header-missing
+        title: Security response header missing
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: posture-prom
+            model:
+              editorMode: code
+              expr: security_header_present
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  reducer:
+                    type: last
+                    params: []
+                  query:
+                    params: [B]
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: '{{ $labels.url }} missing header {{ $labels.header }}'
+          description: 'Expected security header is absent from the response; regression or new endpoint needs hardening.'
+        labels:
+          severity: warning
+          category: headers

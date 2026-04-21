@@ -59,7 +59,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "docker-compose.yml,prometheus.yml,Caddyfile"
+          source: "docker-compose.yml,prometheus.yml,Caddyfile,grafana"
           target: "~/posture-monitor/"
           overwrite: true
 

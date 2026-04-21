@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: posture
+    orgId: 1
+    folder: Posture
+    type: file
+    disableDeletion: false
+    editable: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
