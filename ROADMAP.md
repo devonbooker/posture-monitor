@@ -31,7 +31,7 @@ Phased plan, prioritized for **Security Infrastructure / DevSecOps / Cloud Secur
 
 ---
 
-## Phase 3 - Terraform the infrastructure
+## Phase 3 - Terraform the infrastructure ✅ SHIPPED 2026-04-22
 
 **What:** Hetzner Cloud provider (`hetznercloud/hcloud`) for the CAX11 server + SSH keys; Cloudflare provider for the A records; `cloud-init` for Docker install and UFW/fail2ban bootstrap. Secrets stay in GitHub Actions. Add a `terraform plan` PR check.
 
