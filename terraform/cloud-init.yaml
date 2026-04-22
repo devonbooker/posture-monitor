@@ -1,0 +1,61 @@
+#cloud-config
+# Bootstrap script for fresh VMs. Executed by cloud-init on first boot.
+# The current imported server was provisioned manually, so ignore_changes on
+# user_data in server.tf prevents Terraform from trying to "fix" drift. This
+# file is the canonical bootstrap for any future apply that actually creates
+# a new server (e.g. disaster recovery).
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - ufw
+  - fail2ban
+
+users:
+  - name: devon
+    groups: [sudo, docker]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      # The Hetzner-managed SSH key is injected automatically via the
+      # `ssh_keys` attribute on hcloud_server. This user block just ensures
+      # the `devon` account exists with docker+sudo rights. Post-bootstrap,
+      # add the Actions-only key here manually or via a second-stage runner.
+
+write_files:
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "journald",
+        "log-opts": {
+          "tag": "{{.Name}}"
+        }
+      }
+
+runcmd:
+  # Install Docker from Docker's official apt repo (not the Ubuntu-packaged docker.io).
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+
+  # UFW: allow SSH + HTTP/HTTPS. Note: Docker bypasses UFW for published ports;
+  # defense is not-publishing those ports (compose enforces this - only Caddy
+  # binds to the host network).
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp comment 'SSH'
+  - ufw allow 80/tcp comment 'HTTP (Caddy ACME + redirect)'
+  - ufw allow 443/tcp comment 'HTTPS (Caddy)'
+  - ufw --force enable
+
+  # fail2ban with default Debian config protects sshd by default.
+  - systemctl enable --now fail2ban
