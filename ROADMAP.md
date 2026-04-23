@@ -33,6 +33,11 @@ Phased plan, prioritized for **Security Infrastructure / DevSecOps / Cloud Secur
 
 ## Phase 3 - Terraform the infrastructure ✅ SHIPPED 2026-04-22
 
+### Phase 3.5 - Remote state + PR plan check ✅ SHIPPED 2026-04-22
+
+- State migrated from local `terraform.tfstate` to Cloudflare R2 (S3-compatible) in `posture-monitor-tfstate` bucket, `use_lockfile` for conditional-write locking.
+- `.github/workflows/terraform-plan.yml` runs on any PR touching `terraform/`: fmt / init / validate / plan with `-detailed-exitcode`, posts sticky comment with plan output. Passes PR even when changes are planned - only plan *errors* block merge.
+
 **What:** Hetzner Cloud provider (`hetznercloud/hcloud`) for the CAX11 server + SSH keys; Cloudflare provider for the A records; `cloud-init` for Docker install and UFW/fail2ban bootstrap. Secrets stay in GitHub Actions. Add a `terraform plan` PR check.
 
 **Why:** "Terraform" is on Devon's skill stack. Right now the infra is a pet - if the VM dies, it gets rebuilt by hand. After Phase 3 it's cattle: `terraform apply` reproduces everything from zero. Single biggest jump in "real-world infra engineer" signal this project can make.
