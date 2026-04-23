@@ -1,0 +1,138 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-plan.yml"
+
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: 1.14.9
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform init
+        id: init
+        run: terraform init -input=false -lock-timeout=120s
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          set +e
+          terraform plan -no-color -input=false -lock-timeout=120s -detailed-exitcode > plan.txt 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat plan.txt
+          # GitHub comments have a 65,536 char limit. Truncate with a clear marker.
+          if [ "$(wc -c < plan.txt)" -gt 60000 ]; then
+            head -c 60000 plan.txt > plan_trimmed.txt
+            printf '\n\n... [plan output truncated - see full logs in Actions run] ...\n' >> plan_trimmed.txt
+          else
+            cp plan.txt plan_trimmed.txt
+          fi
+          # Detailed-exitcode: 0 = no changes, 2 = changes planned, 1 = error.
+          # Only error (1) should fail the job; changes (2) is informational.
+          if [ "$code" = "1" ]; then
+            exit 1
+          fi
+          exit 0
+
+      - name: Post plan to PR
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            let planOutput = '';
+            try {
+              planOutput = fs.readFileSync('terraform/plan_trimmed.txt', 'utf8');
+            } catch (e) {
+              planOutput = '(plan output unavailable - check job logs)';
+            }
+
+            const fmt = '${{ steps.fmt.outcome }}';
+            const init = '${{ steps.init.outcome }}';
+            const validate = '${{ steps.validate.outcome }}';
+            const planCode = '${{ steps.plan.outputs.exit_code }}';
+
+            const badge = (ok) => ok === 'success' ? '✅' : ok === 'failure' ? '❌' : '⚠️';
+            const planLabel = planCode === '0' ? '✅ no changes' :
+                              planCode === '2' ? '📝 changes planned' :
+                              '❌ errored';
+
+            const body = [
+              '## Terraform Plan',
+              '',
+              '| Step | Status |',
+              '|------|--------|',
+              `| fmt | ${fmt === 'success' ? '✅' : '⚠️ drift - run \`terraform fmt -recursive\`'} |`,
+              `| init | ${badge(init)} |`,
+              `| validate | ${badge(validate)} |`,
+              `| plan | ${planLabel} |`,
+              '',
+              '<details>',
+              '<summary>Plan output</summary>',
+              '',
+              '```hcl',
+              planOutput,
+              '```',
+              '</details>',
+              '',
+              `_Last updated: ${new Date().toISOString()} • commit ${context.sha.substring(0,7)}_`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.startsWith('## Terraform Plan')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
